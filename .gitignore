@@ -169,3 +169,7 @@ pip-log.txt
 *.Frank
 *.dep
 *.zip
+/output/*
+*.map
+*.tra
+*.uvopt
