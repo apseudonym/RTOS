@@ -17,6 +17,7 @@
 #include "Output.h"
 #include "uart.h"
 #include "lm3s8962.h"
+#include "ping.h"
 
 unsigned long NumCreated;   // number of foreground threads created
 unsigned long PIDWork;      // current number of PID calculations finished
@@ -298,7 +299,7 @@ void PrintADCs(void){
     }        
 }
 void EnableInterrupts(void);
-int main(void){        // ADC Test main
+int adcmain(void){        // ADC Test main
     OS_Init();           // initialize, disable interrupts
     Output_Init();
     UART_Init();
@@ -313,6 +314,28 @@ int main(void){        // ADC Test main
     NumCreated += OS_AddThread(&PrintADCs,128,15);
     //OS_AddPeriodicThread(PrintADCs, 500,0);
     OS_Launch(TIMESLICE); // doesn't return, interrupts enabled in here
+    return 0;             // this never executes
+}
+
+void PingGo(void){
+    unsigned long data;
+    while(1){
+        data = PingSingle();
+        oLED_Message(BOTTOM,3,"Sonar",data);
+        UART_Message("Sonar:",data);
+        OS_Suspend();
+    }
+}
+
+int main(void){        // PING Test main
+    OS_Init();           // initialize, disable interrupts
+    Output_Init();
+    UART_Init();
+    NumCreated += OS_AddThread(&UART_Output_Thread,256,1); 
+    NumCreated += OS_AddThread(&Message_Output_Thread,256,0);
+    NumCreated += OS_AddThread(&PingGo,128,15);
+    //OS_AddPeriodicThread(Ping, 500,0);
+    OS_Launch(TIMESLICE*10); // doesn't return, interrupts enabled in here
     return 0;             // this never executes
 }
 

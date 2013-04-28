@@ -19,12 +19,16 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 6075 of the EK-LM3S8962 Firmware Package.
+// This is part of revision 6075 of the EK-LM3S1968 Firmware Package.
 //
 //*****************************************************************************
 
 #ifndef __RIT128X96X4_H__
 #define __RIT128X96X4_H__
+
+#define Display RIT128x96x4
+#define NUM_ROWS  96
+#define NUM_COLS  128
 
 //*****************************************************************************
 //
@@ -47,4 +51,10 @@ extern void RIT128x96x4Disable(void);
 extern void RIT128x96x4DisplayOn(void);
 extern void RIT128x96x4DisplayOff(void);
 
+void RIT128x96x4_ClearImage(void);
+void RIT128x96x4_Pixel(int x, int y, unsigned char color);
+unsigned char RIT128x96x4_GetPixel(int x, int y);
+void RIT128x96x4_Line(int x1, int y1, int x2, int y2, unsigned char color);
+void RIT128x96x4_LoadImage(const unsigned char* bitmap, int x, int y);
+void RIT128x96x4_ShowImage(void);
 #endif // __RIT128X96X4_H__

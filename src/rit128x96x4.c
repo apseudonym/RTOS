@@ -18,7 +18,7 @@
 // CIRCUMSTANCES, BE LIABLE FOR SPECIAL, INCIDENTAL, OR CONSEQUENTIAL
 // DAMAGES, FOR ANY REASON WHATSOEVER.
 // 
-// This is part of revision 6075 of the EK-LM3S8962 Firmware Package.
+// This is part of revision 6075 of the EK-LM3S1968 Firmware Package.
 //
 //*****************************************************************************
 
@@ -45,11 +45,13 @@
 // panel control signal.
 //
 //*****************************************************************************
-#define SYSCTL_PERIPH_GPIO_OLEDDC   SYSCTL_PERIPH_GPIOA
-#define GPIO_OLEDDC_BASE            GPIO_PORTA_BASE
-#define GPIO_OLEDDC_PIN             GPIO_PIN_6
-#define GPIO_OLEDEN_PIN             GPIO_PIN_7
-
+#define SYSCTL_PERIPH_GPIO_OLEDDC   SYSCTL_PERIPH_GPIOH
+#define GPIO_OLEDDC_BASE            GPIO_PORTH_BASE
+#define GPIO_OLEDDC_PIN             GPIO_PIN_2
+#define GPIO_OLEDEN_PIN             GPIO_PIN_3
+#define BITMAP_HEADER_SIZE   0x76
+#define BITMAP_WIDTH_OFFSET  0x12
+#define BITMAP_HEIGHT_OFFSET 0x16
 //*****************************************************************************
 //
 // Flags to indicate the state of the SSI interface to the display.
@@ -312,6 +314,8 @@ static const unsigned char g_pucRIT128x96x4Init[] =
     //
     2, 0xAF, 0xe3,
 };
+
+
 
 //*****************************************************************************
 //
@@ -917,10 +921,107 @@ RIT128x96x4DisplayOff(void)
     RITWriteCommand(pucCommand1, sizeof(pucCommand1));
 }
 
+
+//RAM Image Drivers
+unsigned char RAMImageBuffer[NUM_ROWS][NUM_COLS/2];
+
+
+
+int sign(int a){
+	if(a>0)		
+		return 1;
+	else if(a<0)
+		return -1;
+	else
+		return 0;
+}
+int abs(int a){
+	return (a>=0) ? a : -a;
+}
+
+
+//*************RIT128x96x4_ClearImage************************************** 
+//  Clears the RAM version of the image 
+//  Inputs: none 
+//  Outputs: none 
+void RIT128x96x4_ClearImage(void){
+	int i,j;
+	for (i = 0; i<NUM_ROWS; i++)
+		for(j = 0;	j<(NUM_COLS/2); j++)
+			 RAMImageBuffer[i][j]=0x00;
+} 
+
+//*************RIT128x96x4_Pixel************************************** 
+//  Sets one pixel in the RAM version of the image 
+//  Inputs: (x,y) is the location of the pixel
+//			color is 0 (off) to 15 (white) 
+//  Outputs: none 
+void RIT128x96x4_SetPixel(int x, int y, unsigned char color){
+	RAMImageBuffer[x][y>>1] &= 	(y&0x1)?(0xF0):(0x0F);
+	RAMImageBuffer[x][y>>1] |= (y&0x1)?color:(color<<4);
+} 
+//*************RIT128x96x4_Pixel************************************** 
+//  Sets one pixel in the RAM version of the image 
+//  Inputs: (x,y) is the location of the pixel
+//			color is 0 (off) to 15 (white) 
+//  Outputs: color at pixel 
+unsigned char RIT128x96x4_GetPixel(int x, int y){
+	return (y&0x1)?(RAMImageBuffer[x][y>>1]&0x0F):(RAMImageBuffer[x][y>>1]>>4);
+} 
+
+
+//*************RIT128x96x4_Line******************************************** 
+//  Draws one line in the RAM version of the image 
+//  Inputs: (x1,y1) is the start point 
+//          (x2,y2) is the end point 
+//          color is 0 (off) to 15 (white) 
+//  coordinates range from 0 to MAX, 0 is bottom or left, MAX is top or right 
+//  Outputs: none 
+void RIT128x96x4_Line(int x1, int y1, int x2, int y2, unsigned char color){
+	 int i,j;
+	 // determine the direction of the line
+	if(abs(x1-x2) >= abs(y1-y2)){ //populate from x direction
+		for(i=x1 ; i!= x2 ; i+=sign(x2-x1)){
+			j = ( y1 + (((i-x1) * (y2-y1)) / (x2-x1)) );
+			RIT128x96x4_SetPixel(j,i,color);
+		}
+	}
+	else{  //populate from y direction
+		for(i=y1 ; i!= y2 ; i+=sign(y2-y1)){
+			j = ( x1 + (((i-y1) * (x2-x1)) / (y2-y1)) );
+			RIT128x96x4_SetPixel(i,j,color);
+		}
+	}
+}
+
+//*************RIT128x96x4_LoadImage************************************** 
+//  Loads a sizeX by sizeY 4-bit bitmap into the RAMImageBuffer starting at location (x,y)  
+//  Inputs:  
+//  Outputs: none 
+void RIT128x96x4_LoadImage(const unsigned char* bitmap, int x, int y){
+ 	int i, j,sizeX,sizeY;
+	sizeX = (unsigned long)bitmap[BITMAP_HEIGHT_OFFSET];
+    sizeY = (unsigned long)bitmap[BITMAP_WIDTH_OFFSET];
+	for(i = x; i < sizeX; i++){
+	 	for(j = y; j < (sizeY>>1); j++){
+			RAMImageBuffer[i][j] = bitmap[BITMAP_HEADER_SIZE + (( NUM_ROWS - i ) * (sizeY>>1)) + j];
+		}
+	}
+}
+
+//*************RIT128x96x4_ShowImage************************************** 
+//  Copies the RAM version of the image to the OLED 
+//  Inputs: none 
+//  Outputs: none 
+void RIT128x96x4_ShowImage(void){
+	int i;
+	for(i = 0; i<NUM_ROWS;i++)
+		RIT128x96x4ImageDraw(RAMImageBuffer[i], 0,i, NUM_COLS, 1);
+}
+
 //*****************************************************************************
 //
 // Close the Doxygen group.
 //! @}
 //
 //*****************************************************************************
-
